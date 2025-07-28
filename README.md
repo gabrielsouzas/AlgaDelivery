@@ -272,6 +272,56 @@ Isso reforça o **encapsulamento** e mantém a entidade sob o controle do própr
 
 ---
 
+### Domain Events, Arquitetura Orientada a Eventos e Apache Kafka
+
+Em sistemas modernos e distribuídos como o **AlgaDelivery**, utilizamos o conceito de **Domain Events (Eventos de Domínio)** aliado a uma **Arquitetura Orientada a Eventos (Event-Driven Architecture)** para garantir **desacoplamento**, **responsabilidade única** e **alta escalabilidade** entre os microserviços.
+
+#### O que são Domain Events?
+
+Um **Domain Event** representa algo **relevante que aconteceu no domínio** e que pode interessar a outras partes do sistema. Por exemplo:
+
+* `DeliveryRequested`: um cliente solicitou uma nova entrega.
+* `DeliveryAssigned`: um entregador foi designado para uma entrega.
+* `DeliveryCompleted`: uma entrega foi concluída com sucesso.
+
+Esses eventos são **imutáveis** e **semânticos**, e fazem parte da linguagem ubíqua do domínio. Eles ajudam a **propagar mudanças de estado** sem acoplamento direto entre os serviços.
+
+#### Arquitetura Orientada a Eventos (EDA)
+
+Em vez de um serviço chamar diretamente o outro (ex: via REST), os serviços se comunicam **publicando e ouvindo eventos**:
+
+1. O serviço **Entregas** publica o evento `DeliveryRequested`.
+2. O serviço **Entregadores** escuta esse evento e decide se deseja agir sobre ele (por exemplo, selecionar um entregador).
+3. Nenhum serviço conhece o outro diretamente, o que promove **baixo acoplamento** e **alta coesão**.
+
+Esse modelo nos permite:
+
+* Tratar fluxos assíncronos e reativos.
+* Evoluir os serviços de forma independente.
+* Reduzir dependências temporais entre as partes do sistema.
+
+#### Uso do Apache Kafka
+
+Para viabilizar essa comunicação entre microserviços, utilizamos o **Apache Kafka** como nosso **Message Broker**. Ele é uma plataforma de streaming distribuída, altamente escalável e confiável, ideal para:
+
+* **Publicação** de eventos (via tópicos).
+* **Assinatura** e **consumo** de eventos por múltiplos serviços.
+* **Persistência e reprocessamento** de mensagens.
+
+Cada microserviço possui um ou mais **consumidores Kafka**, e pode **publicar eventos** nos tópicos correspondentes. Assim, conseguimos construir um sistema robusto e reativo, onde cada serviço pode reagir a eventos de forma autônoma.
+
+#### Exemplo prático no projeto
+
+No momento em que uma entrega é solicitada, o serviço de Entregas dispara um evento:
+
+```java
+DomainEventPublisher.publish(new DeliveryRequestedEvent(this.id));
+```
+
+Esse evento é publicado no Kafka, e outros serviços interessados (como `Entregadores` ou `Notificações`) o consomem para realizar suas próprias ações — sem precisar conhecer ou chamar diretamente o serviço de origem.
+
+---
+
 ## Como Executar o Projeto
 
 1. Certifique-se de ter o **PostgreSQL** rodando.
